@@ -114,89 +114,66 @@
 
   )
 
+  ;añade una nuevo ultima_activacion
+  (defrule añadir_ultima_activacion_borrando
+    (valor_registrado ?tiempo movimiento ?habitacion ON)
+    ?Borrar <- (sinmovimiento ?habitacion)
+    (ultima_activacion movimiento ?habitacion ?tiempo2)
+    (test (> ?tiempo ?tiempo2))
+
+    =>
+    (retract ?Borrar)
+    (printout t "borrar sin movimiento" crlf)
+    (assert (ultima_activacion movimiento ?habitacion ?tiempo))
 
 
-(defrule primer_OFF
-  (valor_registrado ?tiempo movimiento ?habitacion OFF)
-  (not(ultima_desactivacion movimiento ?habitacion ?))
-  (not(ultima_activacion movimiento ?habitacion ?))
-  =>
-  (printout t crlf "primer off")
-  (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
-)
-
-(defrule primer_ON
-  (valor_registrado ?tiempo movimiento ?habitacion ON)
-  (not(ultima_desactivacion movimiento ?habitacion ?))
-  (not(ultima_activacion movimiento ?habitacion ?))
-  =>
-  (printout t crlf "primer on")
-  (assert (ultima_activacion movimiento ?habitacion ?tiempo))
-)
-
-(defrule OFF_sin_OFF
-  (valor_registrado ?tiempo movimiento ?habitacion OFF)
-  (not(ultima_desactivacion movimiento ?habitacion ?))
-  (ultima_activacion movimiento ?habitacion ?)
-  =>
-  (printout t crlf "primer off depues de varios on")
-  (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
-
-)
-
-(defrule ON_sin_ON
-  (valor_registrado ?tiempo movimiento ?habitacion ON)
-  (not(ultima_activacion movimiento ?habitacion ?))
-  (ultima_desactivacion movimiento ?habitacion ?)
-  =>
-  (printout t crlf "primer on depues de varios off")
-  (assert (ultima_activacion movimiento ?habitacion ?tiempo))
-
-)
-
-(defrule OFF_completo
-  (valor_registrado ?tiempo movimiento ?habitacion OFF)
-  (ultima_activacion movimiento ?habitacion ?t_activacion)
-  (test (> ?tiempo ?t_activacion))
-  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
-  (test (> ?t_activacion ?t_desactivacion))
-  =>
-  (printout t crlf "primer off completo")
-  (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
-)
-
-(defrule ON_completo
-  (valor_registrado ?tiempo movimiento ?habitacion ON)
-  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
-  (test (> ?tiempo ?t_desactivacion))
-  (ultima_activacion movimiento ?habitacion ?t_activacion)
-  (test (< ?t_activacion ?t_desactivacion))
-  =>
-  (printout t crlf "primer on completo")
-  (assert (ultima_activacion movimiento ?habitacion ?tiempo))
-)
-
-(defrule borrar_ultima_desactivacion
-  (ultima_desactivacion ?tipo ?habitacion ?tiempo)
-  ?Borrar <- (ultima_desactivacion ?tipo ?habitacion ?tiempo2)
-  (test (> ?tiempo ?tiempo2))
-  =>
-  (retract ?Borrar)
+  )
+  (defrule añadir_ultima_activacion
+    (valor_registrado ?tiempo movimiento ?habitacion ON)
+    (not (sinmovimiento ?habitacion))
+    =>
+    (assert (ultima_activacion movimiento ?habitacion ?tiempo))
 
 
-)
+  )
 
-(defrule borrar_ultima_activacion
-  (ultima_activacion ?tipo ?habitacion ?tiempo)
-  ?Borrar <- (ultima_activacion ?tipo ?habitacion ?tiempo2)
-  (test (> ?tiempo ?tiempo2))
-  =>
-  (retract ?Borrar)
-
-
-)
+  ;se queda con la ultima activacion
+  (defrule borrar_ultima_activacion
+    (ultima_activacion ?tipo ?habitacion ?tiempo)
+    ?Borrar <- (ultima_activacion ?tipo ?habitacion ?tiempo2)
+    (test (> ?tiempo ?tiempo2))
+    =>
+    (retract ?Borrar)
 
 
+  )
+
+  ;añade una nueva utlima_desactivacion
+  (defrule añadir_ultima_desactivacion
+    (valor_registrado ?tiempo movimiento ?habitacion OFF)
+    =>
+    (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
+
+
+  )
+
+  ;se queda con la ultima desactivacion
+  (defrule borrar_ultima_desactivacion
+    (ultima_desactivacion ?tipo ?habitacion ?tiempo)
+    ?Borrar <- (ultima_desactivacion ?tipo ?habitacion ?tiempo2)
+    (test (> ?tiempo ?tiempo2))
+    =>
+    (retract ?Borrar)
+
+
+  )
+
+;  (deffunction obtener_max (?habitacion)
+;    (valor_registrado ?tiempo ?tipo ?habitacion ?estado)
+;    (not (valor_registrado ?tiempo2&:(> ?tiempo2 ?tiempo) ?tipo2 ?habitacion ?estado2))
+
+;    tiempo
+;  )
 
 
   (defrule informe
@@ -206,6 +183,61 @@
     (printout t "tiempo: " ?tiempo " tipo: " ?tipo " habitacion: " ?habitacion " estado:" ?estado crlf)
   )
 
+
+;encender luz
+
+;encender luz cuando sensor on y luminosidad superior a 300
+(defrule apagar_luz_luminosidad
+  (ultimo_registro luminosidad ?habitacion ?tiempo)
+  (valor_registrado ?tiempo luminosidad ?habitacion ?valor )
+  (test (> ?valor 300))
+  (ultima_activacion ? ?habitacion ?t_activacion)
+  (ultima_desactivacion ? ?habitacion ?t_desactivacion)
+  (test (> ?t_activacion ?t_desactivacion))
+
+  =>
+  (printout t crlf "Apagar luz en " ?habitacion "con luminosidad " ?valor)
+
+)
+
+(defrule encender_luz_luminosidad
+  (ultimo_registro luminosidad ?habitacion ?tiempo)
+  (valor_registrado ?tiempo luminosidad ?habitacion ?valor )
+  (test (<= ?valor 300))
+  (ultima_activacion ? ?habitacion ?t_activacion)
+  (ultima_desactivacion ? ?habitacion ?t_desactivacion)
+  (test (> ?t_activacion ?t_desactivacion))
+  =>
+  (printout t "Encender luz en " ?habitacion " con luminosidad " ?valor crlf)
+)
+
+(defrule apagar_luz_tiempo
+  (ultima_desactivacion ? ?habitacion ?t_desactivacion)
+  (ultima_activacion ? ?habitacion ?t_activacion)
+
+  (test (< ?t_activacion ?t_desactivacion))
+  (not (sinmovimiento ?habitacion))
+  (not (parece_desconectado ? ?))
+
+  =>
+  (assert (parece_desconectado ?habitacion ?t_desactivacion))
+  (printout t "Iniciamos desactivacion" crlf)
+
+)
+
+(defrule comprobar_parece_apagado
+  (ultima_desactivacion ? ?habitacion ?t_desactivacion)
+  (ultima_activacion ? ?habitacion ?t_activacion)
+  (test (< ?t_activacion ?t_desactivacion))
+  (not (sinmovimiento ?habitacion))
+  ?Borrar <- (parece_desconectado ?habitacion ?t_inicial)
+  (test (<= 15 (- ?t_desactivacion ?t_inicial)))
+  =>
+  (retract ?Borrar)
+  (assert (sinmovimiento ?habitacion))
+  (printout t "Ahora tocaria desactivar" crlf)
+
+)
 
 
 
