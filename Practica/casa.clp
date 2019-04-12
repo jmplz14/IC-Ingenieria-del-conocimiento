@@ -114,16 +114,16 @@
 
   )
 
+;decicir si se tiene que mandar un nuevo cambio de activacio a desasctivacion o al contrario
 
-
-(defrule primer_OFF
-  (valor_registrado ?tiempo movimiento ?habitacion OFF)
-  (not(ultima_desactivacion movimiento ?habitacion ?))
-  (not(ultima_activacion movimiento ?habitacion ?))
-  =>
-  (printout t crlf "primer off")
-  (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
-)
+;(defrule primer_OFF
+;  (valor_registrado ?tiempo movimiento ?habitacion OFF)
+;  (not(ultima_desactivacion movimiento ?habitacion ?))
+;  (not(ultima_activacion movimiento ?habitacion ?))
+;  =>
+;  (printout t crlf "primer off")
+;  (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
+;)
 
 (defrule primer_ON
   (valor_registrado ?tiempo movimiento ?habitacion ON)
@@ -195,6 +195,84 @@
 
 
 )
+
+;apagar o encender
+(defrule encender_movimiento_on
+  (ultima_activacion movimiento ?habitacion ?tiempo)
+  =>
+  (printout t crlf "Encender luz")
+)
+
+(defrule apagar_movimiento_off
+  (ultima_desactivacion movimiento ?habitacion ?tiempo)
+  =>
+  (assert (pareceapagado ?habitacion ))
+  (printout t crlf "parece apagado")
+
+)
+
+;regas para esperar 15 segundos antes de apagar luz
+(defrule esperar_segundos_off
+  (valor_registrado ?tiempo movimiento ?habitacion OFF)
+  ?Borrar <- (pareceapagado ?habitacion)
+  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
+  (test (> (- ?tiempo ?t_desactivacion) 14))
+  =>
+  (printout t crlf "ya no parece apagada lo esta")
+  (retract ?Borrar)
+)
+
+
+;luminosidad
+
+(defrule primer_apagar_luz_luminosidad_sin_off
+  (ultimo_registro luminosidad ?habitacion ?tiempo)
+  (ultima_activacion movimiento ?habitacion ?)
+  (not (ultima_desactivacion movimiento ?habitacion ?))
+  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
+  (test (>= ?valor 300))
+  =>
+  (printout t crlf "Apagar luz por luminosidad")
+)
+
+(defrule primer_encender_luz_luminosidad_sin_off
+  (ultimo_registro luminosidad ?habitacion ?tiempo)
+  (ultima_activacion movimiento ?habitacion ?)
+  (not (ultima_desactivacion movimiento ?habitacion ?))
+  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
+  (test (< ?valor 300))
+
+  =>
+  (printout t crlf "Encender luz por luminosidad")
+)
+
+(defrule primer_apagar_luz_luminosidad_con_off
+  (ultimo_registro luminosidad ?habitacion ?tiempo)
+  (ultima_activacion movimiento ?habitacion ?t_activacion)
+  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
+  (test (> ?t_activacion ?t_desactivacion))
+  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
+  (test (>= ?valor 300))
+
+  =>
+  (printout t crlf "Apagar luz por luminosidad")
+)
+
+(defrule primer_encender_luz_luminosidad_con_off
+  (ultimo_registro luminosidad ?habitacion ?tiempo)
+  (ultima_activacion movimiento ?habitacion ?t_activacion)
+  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
+  (test (> ?t_activacion ?t_desactivacion))
+  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
+  (test (< ?valor 300))
+
+  =>
+  (printout t crlf "Encender luz por luminosidad")
+)
+
+
+
+
 
 
 
