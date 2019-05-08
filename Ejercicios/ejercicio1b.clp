@@ -1,5 +1,5 @@
 (defrule anadirPrimero
-  (hecho ?tipo ?)
+  (hecho ?tipo $?)
   =>
   (assert (Contar ?tipo))
 )

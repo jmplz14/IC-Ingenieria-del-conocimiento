@@ -17,10 +17,9 @@
 
 )
 
-
 (defrule anadirPrimero
   (IniciarCuenta ?tipo)
-  (hecho ?tipo ?)
+  (hecho ?tipo $?)
   =>
   (assert (Contar ?tipo))
 
@@ -31,9 +30,6 @@
   =>
   (retract ?borrar)
 )
-
-
-
 
 (defrule contarPrimerHecho
   ?borrar <- (Contar ?tipo)
@@ -55,10 +51,6 @@
 
 
 
-
-
-
-
 (deffacts pruebas_valores
     (hecho casa 5)
     (hecho piso 147)
@@ -71,8 +63,7 @@
     (ContarHechos piso)
     (hecho piso 665)
     (hecho piso 22)
-    (ContarHechos piso)
-    (ContarHechos piso)
+
 
 
 
