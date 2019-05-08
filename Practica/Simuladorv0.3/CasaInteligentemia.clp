@@ -130,7 +130,6 @@
 ;  (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
 ;)
 
-;primer on si ninngun on anteiror ni off
 (defrule primer_ON
   (valor_registrado ?tiempo movimiento ?habitacion on)
   (not(ultima_desactivacion movimiento ?habitacion ?))
@@ -140,7 +139,6 @@
   (assert (ultima_activacion movimiento ?habitacion ?tiempo))
 )
 
-;primer off sin que se tenga un off antrior
 (defrule OFF_sin_OFF
   (valor_registrado ?tiempo movimiento ?habitacion off)
   (not(ultima_desactivacion movimiento ?habitacion ?))
@@ -150,7 +148,7 @@
   (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
 
 )
-;primer on sin que se tenga un on anterior
+
 (defrule ON_sin_ON
   (valor_registrado ?tiempo movimiento ?habitacion on)
   (not(ultima_activacion movimiento ?habitacion ?))
@@ -161,7 +159,6 @@
 
 )
 
-;cuando ya tenemos tanto un off como un on anteriormente
 (defrule OFF_completo
   (valor_registrado ?tiempo movimiento ?habitacion off)
   (ultima_activacion movimiento ?habitacion ?t_activacion)
@@ -173,7 +170,6 @@
   (assert (ultima_desactivacion movimiento ?habitacion ?tiempo))
 )
 
-;cuando ya tenemos tanto un off como un on anteriormente
 (defrule ON_completo
   (valor_registrado ?tiempo movimiento ?habitacion on)
   (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
@@ -195,7 +191,6 @@
 
 )
 
-;Se qued acon la ultima activacion
 (defrule borrar_ultima_activacion
   (ultima_activacion ?tipo ?habitacion ?tiempo)
   ?Borrar <- (ultima_activacion ?tipo ?habitacion ?tiempo2)
@@ -217,10 +212,8 @@
 ;  (assert (accion pulsador_luz ?habitacion encender))
 ;)
 
-;apaga cuando detecta un off
 (defrule apagar_movimiento_off
   (ultima_desactivacion movimiento ?habitacion ?tiempo)
-  (Manejo_inteligente_luces ?habitacion)
   (ultimo_registro estadoluz ?habitacion ?t_luz)
   (valor_registrado ?t_luz estadoluz ?habitacion on)
   =>
@@ -243,12 +236,10 @@
 
 
 
-;Las siguentes reglas son las que se encargar de controlar la luminosidad
+;luminosidad
 
-;apaga la luz por exceso de luminosidad sin tener un off anteriormente.
 (defrule primer_apagar_luz_luminosidad_sin_off
   (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (Manejo_inteligente_luces ?habitacion)
   (ultima_activacion movimiento ?habitacion ?)
   (not (ultima_desactivacion movimiento ?habitacion ?))
   (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
@@ -258,13 +249,12 @@
   (valor_registrado ?t_registro luminosidad ?habitacion on)
   =>
   (assert (accion pulsador_luz ?habitacion apagar))
-  ;(printout t crlf "Luminosidad alta")
+  (printout t crlf "Luminosidad alta")
 
 )
-;apaga la luz teniendo anteriormeente un off
+
 (defrule primer_apagar_luz_luminosidad_con_off
   (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (Manejo_inteligente_luces ?habitacion)
   (ultima_activacion movimiento ?habitacion ?t_activacion)
   (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
   (test (> ?t_activacion ?t_desactivacion))
@@ -276,12 +266,11 @@
 
   =>
   (assert (accion pulsador_luz ?habitacion apagar))
-  ;(printout t crlf "Luminosidad alta")
+  (printout t crlf "Luminosidad alta")
 )
-;enciende la luz sin tenener antes un off
+
 (defrule primer_encender_luz_luminosidad_sin_off
   (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (Manejo_inteligente_luces ?habitacion)
   (ultima_activacion movimiento ?habitacion ?)
   (not (ultima_desactivacion movimiento ?habitacion ?))
   (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
@@ -290,13 +279,12 @@
   (not (ultimo_registro estadoluz ?habitacion ?t_luz))
   ;(valor_registrado ?t_luz estadoluz ?habitacion off)
   =>
-  ;(printout t crlf "Encender luz luminosidad baja")
+  (printout t crlf "Encender luz luminosidad baja")
   (assert (accion pulsador_luz ?habitacion encender))
 )
-;enciende la luza teniendo anteriormente teninedo ya un registro de estado de la luz
+
 (defrule primer_encender_luz_luminosidad_sin_off_con_inicio
   (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (Manejo_inteligente_luces ?habitacion)
   (ultima_activacion movimiento ?habitacion ?)
   (not (ultima_desactivacion movimiento ?habitacion ?))
   (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
@@ -305,15 +293,14 @@
   (ultimo_registro estadoluz ?habitacion ?t_luz)
   (valor_registrado ?t_luz estadoluz ?habitacion off)
   =>
-  ;(printout t crlf "Encender luz luminosidad baja")
+  (printout t crlf "Encender luz luminosidad baja")
   (assert (accion pulsador_luz ?habitacion encender))
 )
 
 
-;encender la luz teniendo ya un registro de off
+
 (defrule primer_encender_luz_luminosidad_con_off
   (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (Manejo_inteligente_luces ?habitacion)
   (ultima_activacion movimiento ?habitacion ?t_activacion)
   (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
   (test (> ?t_activacion ?t_desactivacion))
@@ -324,14 +311,13 @@
   ;(valor_registrado ?t_luz estadoluz ?habitacion off)
   =>
 
-  ;(printout t crlf "Encender luz luminosidad baja")
+  (printout t crlf "Encender luz luminosidad baja")
   (assert (accion pulsador_luz ?habitacion encender))
 
 )
-;encender la luz con un registro de off y con un estadodeluz
+
 (defrule primer_encender_luz_luminosidad_con_off_con_inicio
   (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (Manejo_inteligente_luces ?habitacion)
   (ultima_activacion movimiento ?habitacion ?t_activacion)
   (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
   (test (> ?t_activacion ?t_desactivacion))
@@ -342,7 +328,7 @@
   (valor_registrado ?t_luz estadoluz ?habitacion off)
   =>
 
-  ;(printout t crlf "Encender luz luminosidad baja")
+  (printout t crlf "Encender luz luminosidad baja")
   (assert (accion pulsador_luz ?habitacion encender))
 
 )
@@ -352,7 +338,7 @@
 
 
 
-;las tres siguientes reglas son par agenerar el informe
+
 (defrule informe
   (informe ?habitacion)
   (valor_registrado ?tiempo ?tipo ?habitacion ?estado)
