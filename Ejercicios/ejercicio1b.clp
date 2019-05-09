@@ -22,6 +22,13 @@
 
 )
 
+(defrule contar
+  (ContarHechos ?tipo)
+  (NumeroHechos ?tipo ?n)
+  =>
+  (printout t "Existen " ?n " de tipo " ?tipo crlf)
+)
+
 
 
 (deffacts pruebas_valores
