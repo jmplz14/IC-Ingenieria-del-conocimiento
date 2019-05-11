@@ -18,7 +18,7 @@
     )
 
   )
-(printout t ?menor)
+?menor
 )
 
 (deffacts pruebas_valores

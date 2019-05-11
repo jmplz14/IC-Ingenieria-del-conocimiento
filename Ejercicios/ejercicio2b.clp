@@ -6,13 +6,13 @@
       (bind ?menor ?field))
     ;printout t "--> " ?field " " ?field-index " <--"  ?menor crlf
   )
-  (printout t "El menor de " ?c " es " ?menor crlf)
+  ?menor
 )
 
 (defrule pruebaFuncion
   (TTT $?numeros)
   =>
-  (minxit $?numeros)
+  (printout t (minxit $?numeros) crlf)
 
 )
 
