@@ -1,3 +1,82 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;; FUNCIONES UTILES PARA MANEJAR LA HORA EN CLIPS  ;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;se ofrecen para facilitar el proceso de añadir timestamp a eventos ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;; DEPENDERA DEL SISTEMA OPERATIVO (elegir comentando o descomentando a continuacion ;;;;;;;
+
+;(defglobal ?*SO* = 1)              ;;; Windows (valor 1)    comentar si tu SO es linux o macos
+
+(defglobal ?*SO* = 0)             ;;; Linux o MacOs (valor 0)    descoemntar si tu SO es linux o macos
+
+
+;; Funcion que transforma ?h:?m:?s  en segundos transcurridos desde las 0h en punto ;;;
+
+(deffunction totalsegundos (?h ?m ?s)
+   (bind ?rv (+ (* 3600 ?h) (* ?m 60) ?s))
+   ?rv)
+
+;;;;;; Funcion que devuelve la salida de ejecutar  ?arg en linea de comandos del sistema ;;;
+
+   (deffunction system-string (?arg)
+   (bind ?arg (str-cat ?arg " > temp.txt"))
+   (system ?arg)
+   (open "temp.txt" temp "r")
+   (bind ?rv (readline temp))
+   (close temp)
+   ?rv)
+
+;;;;;; Funcion que devuelve el nº de horas de la hora del sistema, si en el sistema son las ?h:?m:?s, devuelve ?h  ;;;;;;;;;;;;
+
+   (deffunction horasistema ()
+   (if (= ?*SO* 1)
+      then
+         (bind ?rv (integer (string-to-field (sub-string 1 2  (system-string "time /t")))))
+	   else
+	     (bind ?rv (string-to-field  (system-string "date +%H")))
+         )
+   ?rv)
+
+;;;;;; Funcion que devuelve el nº de minutos de la hora del sistema, si en el sistema son las ?h:?m:?s, devuelve ?m  ;;;;;;;;;;;;
+
+   (deffunction minutossistema ()
+   (if (= ?*SO* 1)
+       then
+          (bind ?rv (integer (string-to-field (sub-string 4 5  (system-string "time /t")))))
+	   else
+	     (bind ?rv (string-to-field  (system-string "date +%M")))	  )
+   ?rv)
+
+;;;;;; Funcion que devuelve el nº de segundos de la hora del sistema, si en el sistema son las ?h:?m:?s, devuelve ?s  ;;;;;;;;;;;;
+
+   (deffunction segundossistema ()
+   (if (= ?*SO* 1)
+       then
+          (bind ?rv (integer (string-to-field (sub-string 7 8  (system-string "@ECHO.%time:~0,8%")))))
+	   else
+	     (bind ?rv (string-to-field  (system-string "date +%S")))	  )
+   ?rv)
+
+;;;;;; Funcion que devuelve el valor de ?h  al pasar ?t segundos al formato ?h:?m:?s  ;;;;;;;;;;
+
+    (deffunction hora-segundos (?t)
+   (bind ?rv  (div ?t 3600))
+   ?rv)
+
+;;;;;; Funcion que devuelve el valor de ?m  al pasar ?t segundos al formato ?h:?m:?s  ;;;;;;;;;;
+   (deffunction minuto-segundos (?t)
+   (bind ?rv (- ?t (* (hora-segundos ?t) 3600)))
+   (bind ?rv (div ?rv 60))
+   ?rv)
+
+;;;;;; Funcion que devuelve el valor de ?s  al pasar ?t segundos al formato ?h:?m:?s  ;;;;;;;;;;
+   (deffunction segundo-segundos (?t)
+   (bind ?rv (- ?t (* (hora-segundos ?t) 3600)))
+   (bind ?rv (- ?rv (* (minuto-segundos ?t) 60)))
+   ?rv)
+
+
 
 
 ;habitaciones
@@ -9,7 +88,7 @@
   (habitacion bestidor 1)
   (habitacion comedor 2)
   (habitacion pasillo 5)
-  (habitacion baño 1)
+  (habitacion bano 1)
   (habitacion dormitorio 1)
   (habitacion cochera 2)
   (Manejo_inteligente_luces salon)
@@ -36,7 +115,7 @@
 
 ;puertas interiores
 (deffacts puertasInterior
-  (puertaInterior pi_pasillo1 pasillo baño)
+  (puertaInterior pi_pasillo1 pasillo bano)
   (puertaInterior pi_pasillo2 pasillo cochera)
   (puertaInterior pi_pasillo3 pasillo dormitorio)
   (puertaInterior pi_recibidor recibidor bestidor))
@@ -92,7 +171,7 @@
     (valor ?tipo ?habitacion ?estado)
     =>
     ;(printout t crlf "Registrando valor")
-    (assert (valor_registrado ?*transcurrido* ?tipo ?habitacion ?estado))
+    (assert (valor_registrado (totalsegundos (horasistema) (minutossistema) (segundossistema)) ?tipo ?habitacion ?estado))
 
   )
 
@@ -110,7 +189,7 @@
   )
 
   ;añade un nuevo ultimo registro
-  (defrule añadir_ultimo_evento
+  (defrule anadir_ultimo_evento
     (valor_registrado ?tiempo ?tipo ?habitacion ?estado)
     (test (neq ?tipo movimiento))
     =>
@@ -201,141 +280,54 @@
 
 )
 
-;apagar o encender
-;(defrule encender_movimiento_on
-;  (ultima_activacion movimiento ?habitacion ?tiempo)
-;  (ultimo_registro luminosidad ?habitacion ?t_luminosidad)
-;  (valor_registrado ?t_luminosidad luminosidad ?habitacion ?valor)
-;  (test (< (- ?valor ?luz) 400))
-;  =>
-;  (printout t crlf "Encender luz por movimiento")
-;  (assert (accion pulsador_luz ?habitacion encender))
-;)
 
-(defrule apagar_movimiento_off
-  (ultima_desactivacion movimiento ?habitacion ?tiempo)
-  (ultimo_registro estadoluz ?habitacion ?t_luz)
-  (valor_registrado ?t_luz estadoluz ?habitacion on)
+;---------------------Modulo detectar si sale de casa---------------------------
+(defrule activar_modulo_abandono_casa
+  (ultimo_registro magnetico ?habitacion ?tiempo)
+  (valor_registrado ?tiempo magnetico ?habitacion off)
   =>
-  (assert (accion pulsador_luz ?habitacion apagar))
-  ;(printout t crlf "parece apagado")
+  (assert (HoraInicio (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+  (assert (HoraActual (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+  (assert (modulo salircasa))
 
 )
 
-;regas para esperar 15 segundos antes de apagar luz
-;(defrule esperar_segundos_off
-;  (valor_registrado ?tiempo movimiento ?habitacion off)
-;  ?Borrar <- (pareceapagado ?habitacion)
-;  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
-;  (test (> (- ?tiempo ?t_desactivacion) 14))
-;  =>
-;  ;(printout t crlf "ya no parece apagada lo esta")
-;  (assert (accion pulsador_luz ?habitación apagar))
-;  (retract ?Borrar)
-;)
+(defrule bucle_modulo_abandono_casa
+   (declare (salience 0))
+   ?h <- (modulo salircasa)
+   ?f <- (HoraActual ?actual)
+   ?g <- (HoraInicio ?inicio)
 
+   =>
+   (retract ?f)
 
+   (if (< 15 (- (totalsegundos (horasistema) (minutossistema) (segundossistema)) ?inicio))
+   then
 
-;luminosidad
+     (printout t "La persona salio de casa." crlf)
+     (retract ?g)
+     (retract ?h)
 
-(defrule primer_apagar_luz_luminosidad_sin_off
-  (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (ultima_activacion movimiento ?habitacion ?)
-  (not (ultima_desactivacion movimiento ?habitacion ?))
-  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
-  (bombilla ?habitacion ?luz)
-  (test (>= (- ?valor ?luz) 400))
-  (ultimo_registro luminosidad ?habitacion ?t_registro)
-  (valor_registrado ?t_registro luminosidad ?habitacion on)
-  =>
-  (assert (accion pulsador_luz ?habitacion apagar))
-  (printout t crlf "Luminosidad alta")
+   )
 
+   (assert (HoraActual (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
 )
 
-(defrule primer_apagar_luz_luminosidad_con_off
-  (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (ultima_activacion movimiento ?habitacion ?t_activacion)
-  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
-  (test (> ?t_activacion ?t_desactivacion))
-  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
-  (bombilla ?habitacion ?luz)
-  (test (>= (- ?valor ?luz) 400))
-  (ultimo_registro luminosidad ?habitacion ?t_registro)
-  (valor_registrado ?t_registro luminosidad ?habitacion on)
+(defrule error_al_detectar_abandono
 
-  =>
-  (assert (accion pulsador_luz ?habitacion apagar))
-  (printout t crlf "Luminosidad alta")
-)
+   ?h <- (modulo salircasa)
+   (valor_registrado ?tiempo movimiento ?habitacion on)
+   ?f <- (HoraActual ?actual)
+   ?g <- (HoraInicio ?inicio)
+   =>
+   (printout t "Falsa alarma" crlf)
+   (retract ?g)
+   (retract ?f)
+   (retract ?h)
 
-(defrule primer_encender_luz_luminosidad_sin_off
-  (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (ultima_activacion movimiento ?habitacion ?)
-  (not (ultima_desactivacion movimiento ?habitacion ?))
-  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
-  (bombilla ?habitacion ?luz)
-  (test (< ?valor 400))
-  (not (ultimo_registro estadoluz ?habitacion ?t_luz))
-  ;(valor_registrado ?t_luz estadoluz ?habitacion off)
-  =>
-  (printout t crlf "Encender luz luminosidad baja")
-  (assert (accion pulsador_luz ?habitacion encender))
-)
-
-(defrule primer_encender_luz_luminosidad_sin_off_con_inicio
-  (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (ultima_activacion movimiento ?habitacion ?)
-  (not (ultima_desactivacion movimiento ?habitacion ?))
-  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
-  (bombilla ?habitacion ?luz)
-  (test (< ?valor 400))
-  (ultimo_registro estadoluz ?habitacion ?t_luz)
-  (valor_registrado ?t_luz estadoluz ?habitacion off)
-  =>
-  (printout t crlf "Encender luz luminosidad baja")
-  (assert (accion pulsador_luz ?habitacion encender))
-)
-
-
-
-(defrule primer_encender_luz_luminosidad_con_off
-  (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (ultima_activacion movimiento ?habitacion ?t_activacion)
-  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
-  (test (> ?t_activacion ?t_desactivacion))
-  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
-  (bombilla ?habitacion ?luz)
-  (test (< (- ?valor ?luz) 400))
-  (not (ultimo_registro estadoluz ?habitacion ?t_luz))
-  ;(valor_registrado ?t_luz estadoluz ?habitacion off)
-  =>
-
-  (printout t crlf "Encender luz luminosidad baja")
-  (assert (accion pulsador_luz ?habitacion encender))
 
 )
-
-(defrule primer_encender_luz_luminosidad_con_off_con_inicio
-  (ultimo_registro luminosidad ?habitacion ?tiempo)
-  (ultima_activacion movimiento ?habitacion ?t_activacion)
-  (ultima_desactivacion movimiento ?habitacion ?t_desactivacion)
-  (test (> ?t_activacion ?t_desactivacion))
-  (valor_registrado ?tiempo luminosidad ?habitacion ?valor)
-  (bombilla ?habitacion ?luz)
-  (test (< (- ?valor ?luz) 400))
-  (ultimo_registro estadoluz ?habitacion ?t_luz)
-  (valor_registrado ?t_luz estadoluz ?habitacion off)
-  =>
-
-  (printout t crlf "Encender luz luminosidad baja")
-  (assert (accion pulsador_luz ?habitacion encender))
-
-)
-
-
-
-
+;--------------------------------------------------------------------------------
 
 
 
@@ -367,16 +359,6 @@
   (printout t "Tiempo: " ?tiempo1 " tipo: " ?tipo " valor: " ?valor crlf)
   (retract ?Borrar)
 )
-
-
-
-
-
-
-
-
-
-
 
 
 ;listar datos introducidos
@@ -418,16 +400,17 @@
 ;  (printout t crlf "desactivacion:" ?tipo ":" ?habitacion ":" ?tiempo )
 ;)
 
-;(deffacts pruebas_valores
+(deffacts pruebas_valores
 
 
 ;    (valor_registrado 5 movimiento salon OFF)
 ;    (valor_registrado 10 movimiento salon ON)
 ;    (valor_registrado 12 luminosidad salon 500)
-;    (valor_registrado 16 luminosidad salon 525)
-;    (valor_registrado 16 luminosidad salon 550)
+     ;(valor_registrado luminosidad salon 525)
+     (valor magnetico salon off)
+     ;(valor movimiento salon on)
 
 
 
 
-; )
+)

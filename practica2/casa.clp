@@ -92,7 +92,7 @@
     (valor ?tipo ?habitacion ?estado)
     =>
     ;(printout t crlf "Registrando valor")
-    (assert (valor_registrado ?*transcurrido* ?tipo ?habitacion ?estado))
+    (assert (valor_registrado 10 ?tipo ?habitacion ?estado))
 
   )
 
@@ -364,7 +364,7 @@
   ?Borrar <- (listado ?tiempo1 ?tipo ?habitacion ?valor)
   (not (listado ?tiempo2 &: (> ?tiempo2 ?tiempo1) ? ?habitacion ?))
   =>
-  (printout t "Tiempo: " ?tiempo1 " tipo: " ?tipo " valor: " ?valor crlf)
+  (printout t "Tiempo: " ?tiempo1 " tipo: " ?tipo " habitación: " ?habitacion " valor: " ?valor crlf)
   (retract ?Borrar)
 )
 
