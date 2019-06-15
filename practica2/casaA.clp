@@ -171,7 +171,7 @@
     (valor ?tipo ?habitacion ?estado)
     =>
     ;(printout t crlf "Registrando valor")
-    (assert (valor_registrado (totalsegundos (horasistema) (minutossistema) (segundossistema)) ?tipo ?habitacion ?estado))
+    (assert (valor_registrado ?*transcurrido* ?tipo ?habitacion ?estado))
 
   )
 
@@ -286,8 +286,8 @@
   (ultimo_registro magnetico ?puertaExterior ?tiempo)
   (valor_registrado ?tiempo magnetico ?puertaExterior off)
   =>
-  (assert (HoraInicio (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
-  (assert (HoraActual (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+  (assert (HoraInicioAbandonoCasa ?*transcurrido*))
+  (assert (PasadaActualAbandonoCasa))
   (assert (modulo salircasa))
 
 )
@@ -295,13 +295,13 @@
 (defrule bucle_modulo_abandono_casa
    (declare (salience -10))
    ?h <- (modulo salircasa)
-   ?f <- (HoraActual ?actual)
-   ?g <- (HoraInicio ?inicio)
+   ?f <- (PasadaActualAbandonoCasa)
+   ?g <- (HoraInicioAbandonoCasa ?inicio)
 
    =>
    (retract ?f)
 
-   (if (< 15 (- (totalsegundos (horasistema) (minutossistema) (segundossistema)) ?inicio))
+   (if (< 15 (- ?*transcurrido* ?inicio))
    then
 
      (printout t "La persona salio de casa." crlf)
@@ -310,17 +310,17 @@
 
    )
 
-   (assert (HoraActual (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+   (assert (PasadaActualAbandonoCasa))
 )
 
 (defrule error_al_detectar_abandono
 
    ?h <- (modulo salircasa)
    (valor_registrado ?tiempo movimiento ?habitacion on)
-   ?f <- (HoraActual ?actual)
-   ?g <- (HoraInicio ?inicio)
+   ?f <- (PasadaActualAbandonoCasa)
+   ?g <- (HoraInicioAbandonoCasa ?inicio)
    =>
-   (printout t "Falsa alarma" crlf)
+   ;(printout t "Falsa alarma" crlf)
    (retract ?g)
    (retract ?f)
    (retract ?h)
@@ -338,8 +338,8 @@
   (if (and (<= 9 (horasistema)) (>= 21 (horasistema)) )
   then
 
-    (assert (IncioNoMovimiento (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
-    (assert (HoraActualNoMovimiento (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+    (assert (IncioNoMovimiento ?*transcurrido*))
+    (assert (PasadaActualNoMovimiento))
     (assert (modulo nomovimiento))
   )
 
@@ -347,34 +347,35 @@
 )
 
 (defrule bucle_modulo_no_movimiento
-   (declare (salience -15))
+   (declare (salience -10000))
    ?h <- (modulo nomovimiento)
-   ?f <- (HoraActualNoMovimiento ?actual)
+   ?f <- (PasadaActualNoMovimiento)
    ?g <- (IncioNoMovimiento ?inicio)
 
    =>
    (retract ?f)
 
-   (if (< 10800 (- (totalsegundos (horasistema) (minutossistema) (segundossistema)) ?inicio))
+   (if (< 5 (- ?*transcurrido* ?inicio))
    then
 
      (printout t "La persona lleva 3 horas sin moverse." crlf)
+     (printout t ?*transcurrido* crlf)
      (retract ?g)
      (retract ?h)
 
    )
 
-   (assert (HoraActualNoMovimiento (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+   (assert (PasadaActualNoMovimiento))
 )
 
 (defrule error_al_detectar_movimiento
 
    ?h <- (modulo nomovimiento)
    (valor_registrado ?tiempo movimiento ? on)
-   ?f <- (HoraActualNoMovimiento ?actual)
+   ?f <- (PasadaActualNoMovimiento)
    ?g <- (IncioNoMovimiento ?inicio)
    =>
-   (printout t "Falsa alarma se movio" crlf)
+   ;(printout t "Falsa alarma se movio" crlf)
    (retract ?g)
    (retract ?f)
    (retract ?h)
@@ -386,11 +387,122 @@
 
 ;-------------------------------------------------------------------------------
 
+
+
 ;---------------------Modulo despierto de noche---------------------------------
 
+;(defrule minSdeT
+;  (Ejecutar ?)
+;  =>
+;  (bind ?min 4)
+;  (do-for-all-facts ((?T T)) (< ?T:S ?min) (bind ?min ?T:S))
+;  (printout t "Valor minimo: " crlf)
+;  (printout t ?min crlf)
+;  (assert (Min ?min))
+;)
+
+;(defrule activar_modulo_despierto_noche
+;  (valor_registrado ?tiempo movimiento ?habitacion on)
+;  =>
+;  (if (and (>= 8 (horasistema)) (<= 22 (horasistema)) )
+;  then
+;    (assert (IncioDespiertoNoche ?*transcurrido*))
+;    (assert (PasadaDespiertoNoche))
+;    (assert (modulo despiertonoche))
+;  )
+
+
+;;)
+
+;(defrule bucle_modulo_despierto_noche
+;   (declare (salience -15))
+;   ?h <- (modulo despiertonoche)
+;   ?f <- (PasadaActualDespiertoNoche)
+;   ?g <- (IncioDespiertoNoche ?inicio)
+
+;   =>
+;   (retract ?f)
+
+;   (if (< 10 (- ?*transcurrido* ?inicio))
+;   then
+
+;     (printout t "Se esperan los 15 minutos" crlf)
+;     (retract ?g)
+;     (retract ?h)
+;     (assert comprobarsiduerme)
+
+;   )
+
+;   (assert (PasadaActualDespiertoNoche))
+;)
+
+;(defrule error_al_detectar_movimiento
+
+;   ?h <- (modulo despiertonoche)
+;   ?i <- (comprobarsiduerme)
+;   ?f <- (PasadaActualDespiertoNoche)
+;   ?g <- (IncioDespiertoNoche ?inicio)
+;   =>
+;   (printout t "Falsa alarma se movio" crlf)
+;   (retract ?g)
+;   (retract ?f)
+;   (retract ?h)
+
+
+;)
 
 ;-------------------------------------------------------------------------------
 
+
+;---------------------Modulo no ir al bano 12 horas-----------------------------
+
+(defrule activar_modulo_no_ir_bano
+  (valor_registrado ?tiempo movimiento bano off)
+  =>
+  (assert (IncioNoIrBano ?*transcurrido*))
+  (assert (PasadaActualNoIrBano))
+  (assert (modulo noirbano))
+)
+
+(defrule bucle_modulo_no_ir_bano
+   (declare (salience -15))
+   ?h <- (modulo noirbano)
+   ?f <- (PasadaActualNoIrBano)
+   ?g <- (IncioNoIrBano ?inicio)
+
+   =>
+   (retract ?f)
+
+   (if (< 10 (- ?*transcurrido* ?inicio))
+   then
+
+     (printout t "La persona lleva 12 horas sin ir al baño." crlf)
+     (retract ?g)
+     (retract ?h)
+
+   )
+
+   (assert (PasadaActualNoIrBano))
+)
+
+(defrule error_al_detectar_movimiento
+
+   ?h <- (modulo noirbano)
+   (valor_registrado ?tiempo movimiento bano on)
+   ?f <- (PasadaActualNoIrBano)
+   ?g <- (IncioNoIrBano ?inicio)
+   =>
+   ;(printout t "Falsa alarma se fue al baño" crlf)
+   (retract ?g)
+   (retract ?f)
+   (retract ?h)
+
+
+)
+
+
+
+;-------------------------------------------------------------------------------
 
 (defrule informe
   (informe ?habitacion)
@@ -464,12 +576,13 @@
 (deffacts pruebas_valores
 
 
-     (valor_registrado 5 movimiento salon off)
+     ;(valor_registrado 5 movimiento salon off)
      ;(valor_registrado 50 movimiento salon on)
      ;(valor_registrado 12 luminosidad salon 500)
      ;(valor_registrado luminosidad salon 525)
      ;(valor magnetico salon off)
-      ;(valor movimiento salon on)
+      (valor movimiento bano off)
+      (valor movimiento bano on)
      ;(valor magnetico salon off)
      ;(valor movimiento salon on)
 

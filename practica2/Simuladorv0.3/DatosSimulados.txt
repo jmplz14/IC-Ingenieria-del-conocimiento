@@ -7,6 +7,7 @@
 
 
 
-(datosensor 10 0 1 movimiento salon on)
+(datosensor 10 0 1 movimiento bano off)
 (datosensor 10 0 5 magnetico salon off)
-(datosensor 10 0 7 movimiento salon on)
+(datosensor 10 0 7 movimiento bano on)
+;(datosensor 10 0 9 movimiento salon on)

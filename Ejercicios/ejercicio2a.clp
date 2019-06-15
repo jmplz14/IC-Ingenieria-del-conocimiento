@@ -20,6 +20,11 @@
   )
 ?menor
 )
+(defrule prueba
+  (iniciar)
+  =>
+  (printout t (minxit $?numeros) crlf)
+)
 
 (deffacts pruebas_valores
  (TTT (SSS 3))
@@ -28,4 +33,5 @@
  (TTT (SSS 2))
  (TTT (SSS 4))
  (TTT (SSS 3))
+ (iniciar)
 )

@@ -1,84 +1,3 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;; FUNCIONES UTILES PARA MANEJAR LA HORA EN CLIPS  ;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;se ofrecen para facilitar el proceso de añadir timestamp a eventos ;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;; DEPENDERA DEL SISTEMA OPERATIVO (elegir comentando o descomentando a continuacion ;;;;;;;
-
-;(defglobal ?*SO* = 1)              ;;; Windows (valor 1)    comentar si tu SO es linux o macos
-
-(defglobal ?*SO* = 0)             ;;; Linux o MacOs (valor 0)    descoemntar si tu SO es linux o macos
-
-
-;; Funcion que transforma ?h:?m:?s  en segundos transcurridos desde las 0h en punto ;;;
-
-(deffunction totalsegundos (?h ?m ?s)
-   (bind ?rv (+ (* 3600 ?h) (* ?m 60) ?s))
-   ?rv)
-
-;;;;;; Funcion que devuelve la salida de ejecutar  ?arg en linea de comandos del sistema ;;;
-
-   (deffunction system-string (?arg)
-   (bind ?arg (str-cat ?arg " > temp.txt"))
-   (system ?arg)
-   (open "temp.txt" temp "r")
-   (bind ?rv (readline temp))
-   (close temp)
-   ?rv)
-
-;;;;;; Funcion que devuelve el nº de horas de la hora del sistema, si en el sistema son las ?h:?m:?s, devuelve ?h  ;;;;;;;;;;;;
-
-   (deffunction horasistema ()
-   (if (= ?*SO* 1)
-      then
-         (bind ?rv (integer (string-to-field (sub-string 1 2  (system-string "time /t")))))
-	   else
-	     (bind ?rv (string-to-field  (system-string "date +%H")))
-         )
-   ?rv)
-
-;;;;;; Funcion que devuelve el nº de minutos de la hora del sistema, si en el sistema son las ?h:?m:?s, devuelve ?m  ;;;;;;;;;;;;
-
-   (deffunction minutossistema ()
-   (if (= ?*SO* 1)
-       then
-          (bind ?rv (integer (string-to-field (sub-string 4 5  (system-string "time /t")))))
-	   else
-	     (bind ?rv (string-to-field  (system-string "date +%M")))	  )
-   ?rv)
-
-;;;;;; Funcion que devuelve el nº de segundos de la hora del sistema, si en el sistema son las ?h:?m:?s, devuelve ?s  ;;;;;;;;;;;;
-
-   (deffunction segundossistema ()
-   (if (= ?*SO* 1)
-       then
-          (bind ?rv (integer (string-to-field (sub-string 7 8  (system-string "@ECHO.%time:~0,8%")))))
-	   else
-	     (bind ?rv (string-to-field  (system-string "date +%S")))	  )
-   ?rv)
-
-;;;;;; Funcion que devuelve el valor de ?h  al pasar ?t segundos al formato ?h:?m:?s  ;;;;;;;;;;
-
-    (deffunction hora-segundos (?t)
-   (bind ?rv  (div ?t 3600))
-   ?rv)
-
-;;;;;; Funcion que devuelve el valor de ?m  al pasar ?t segundos al formato ?h:?m:?s  ;;;;;;;;;;
-   (deffunction minuto-segundos (?t)
-   (bind ?rv (- ?t (* (hora-segundos ?t) 3600)))
-   (bind ?rv (div ?rv 60))
-   ?rv)
-
-;;;;;; Funcion que devuelve el valor de ?s  al pasar ?t segundos al formato ?h:?m:?s  ;;;;;;;;;;
-   (deffunction segundo-segundos (?t)
-   (bind ?rv (- ?t (* (hora-segundos ?t) 3600)))
-   (bind ?rv (- ?rv (* (minuto-segundos ?t) 60)))
-   ?rv)
-
-
-
-
 ;habitaciones
 (deffacts habitaciones
   (habitacion cocina 3)
@@ -171,7 +90,7 @@
     (valor ?tipo ?habitacion ?estado)
     =>
     ;(printout t crlf "Registrando valor")
-    (assert (valor_registrado (totalsegundos (horasistema) (minutossistema) (segundossistema)) ?tipo ?habitacion ?estado))
+    (assert (valor_registrado ?*transcurrido* ?tipo ?habitacion ?estado))
 
   )
 
@@ -283,25 +202,24 @@
 
 ;---------------------Modulo detectar si sale de casa---------------------------
 (defrule activar_modulo_abandono_casa
-  (ultimo_registro magnetico ?habitacion ?tiempo)
-  (valor_registrado ?tiempo magnetico ?habitacion off)
+  (ultimo_registro magnetico ?puertaExterior ?tiempo)
+  (valor_registrado ?tiempo magnetico ?puertaExterior off)
   =>
-  (assert (HoraInicio (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
-  (assert (HoraActual (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+  (assert (HoraInicioAbandonoCasa ?*transcurrido*))
+  ;(assert (PasadaActualAbandonoCasa))
   (assert (modulo salircasa))
 
 )
 
 (defrule bucle_modulo_abandono_casa
-   (declare (salience 0))
+   (declare (salience -10))
    ?h <- (modulo salircasa)
-   ?f <- (HoraActual ?actual)
-   ?g <- (HoraInicio ?inicio)
+   (HoraActualizada ?t)
+   ?g <- (HoraInicioAbandonoCasa ?inicio)
 
    =>
-   (retract ?f)
 
-   (if (< 15 (- (totalsegundos (horasistema) (minutossistema) (segundossistema)) ?inicio))
+   (if (< 15 (- ?*transcurrido* ?inicio))
    then
 
      (printout t "La persona salio de casa." crlf)
@@ -310,26 +228,196 @@
 
    )
 
-   (assert (HoraActual (totalsegundos (horasistema) (minutossistema) (segundossistema) )))
+   ;(assert (PasadaActualAbandonoCasa))
 )
 
 (defrule error_al_detectar_abandono
 
    ?h <- (modulo salircasa)
    (valor_registrado ?tiempo movimiento ?habitacion on)
-   ?f <- (HoraActual ?actual)
-   ?g <- (HoraInicio ?inicio)
+   ?g <- (HoraInicioAbandonoCasa ?inicio)
    =>
-   (printout t "Falsa alarma" crlf)
+   (printout t "Falsa alarma salida" crlf)
    (retract ?g)
-   (retract ?f)
+   ;(retract ?f)
    (retract ?h)
 
 
 )
-;--------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
 
 
+;---------------------Modulo no movimiento en 3 horas---------------------------
+
+(defrule activar_modulo_no_movimiento
+  (valor_registrado ?tiempo movimiento ?habitacion off)
+  =>
+  (if (and (<= 9 (?*hora*)) (>= 21 (?*hora*)) )
+  then
+
+
+    (assert (IncioNoMovimiento ?*transcurrido*))
+    ;(assert (PasadaActualNoMovimiento))
+    (assert (modulo nomovimiento))
+  )
+
+
+)
+
+(defrule bucle_modulo_no_movimiento
+
+
+   ;(declare (salience -15))
+   ?h <- (modulo nomovimiento)
+   (HoraActualizada ?t)
+   ?g <- (IncioNoMovimiento ?inicio)
+
+   =>
+   ;(retract ?f)
+   ;(printout t ?*transcurrido* crlf)
+   (if (< 15 (- ?*transcurrido* ?inicio))
+   then
+
+     (printout t "La persona lleva 3 horas sin moverse." crlf)
+     ;(printout t ?*transcurrido* crlf)
+     (retract ?g)
+     (retract ?h)
+
+   )
+
+
+)
+
+(defrule error_al_detectar_movimiento
+
+   ?h <- (modulo nomovimiento)
+   (valor_registrado ?tiempo movimiento ? on)
+   ;?f <- (PasadaActualNoMovimiento)
+   ?g <- (IncioNoMovimiento ?inicio)
+   =>
+   (printout t "Falsa alarma se movio" crlf)
+   (retract ?g)
+   ;(retract ?f)
+   (retract ?h)
+
+
+)
+
+
+
+;-------------------------------------------------------------------------------
+
+
+
+;---------------------Modulo despierto de noche---------------------------------
+
+;(defrule minSdeT
+;  (Ejecutar ?)
+;  =>
+;  (bind ?min 4)
+;  (do-for-all-facts ((?T T)) (< ?T:S ?min) (bind ?min ?T:S))
+;  (printout t "Valor minimo: " crlf)
+;  (printout t ?min crlf)
+;  (assert (Min ?min))
+;)
+
+;(defrule activar_modulo_despierto_noche
+;  (valor_registrado ?tiempo movimiento ?habitacion on)
+;  =>
+;  (if (and (>= 8 (horasistema)) (<= 22 (horasistema)) )
+;  then
+;    (assert (IncioDespiertoNoche ?*transcurrido*))
+;    (assert (PasadaDespiertoNoche))
+;    (assert (modulo despiertonoche))
+;  )
+
+
+;;)
+
+;(defrule bucle_modulo_despierto_noche
+;   (declare (salience -15))
+;   ?h <- (modulo despiertonoche)
+;   ?f <- (PasadaActualDespiertoNoche)
+;   ?g <- (IncioDespiertoNoche ?inicio)
+
+;   =>
+;   (retract ?f)
+
+;   (if (< 10 (- ?*transcurrido* ?inicio))
+;   then
+
+;     (printout t "Se esperan los 15 minutos" crlf)
+;     (retract ?g)
+;     (retract ?h)
+;     (assert comprobarsiduerme)
+
+;   )
+
+;   (assert (PasadaActualDespiertoNoche))
+;)
+
+;(defrule error_al_detectar_movimiento
+
+;   ?h <- (modulo despiertonoche)
+;   ?i <- (comprobarsiduerme)
+;   ?f <- (PasadaActualDespiertoNoche)
+;   ?g <- (IncioDespiertoNoche ?inicio)
+;   =>
+;   (printout t "Falsa alarma se movio" crlf)
+;   (retract ?g)
+;   (retract ?f)
+;   (retract ?h)
+
+
+;)
+
+;-------------------------------------------------------------------------------
+
+
+;---------------------Modulo no ir al bano 12 horas-----------------------------
+
+(defrule activar_modulo_no_ir_bano
+  (valor_registrado ?tiempo movimiento bano off)
+  =>
+  (assert (IncioNoIrBano ?*transcurrido*))
+  (assert (modulo noirbano))
+)
+
+(defrule bucle_modulo_no_ir_bano
+   (declare (salience -15))
+   ?h <- (modulo noirbano)
+   (HoraActualizada ?t)
+   ?g <- (IncioNoIrBano ?inicio)
+
+   =>
+
+   (if (< 10 (- ?*transcurrido* ?inicio))
+   then
+
+     (printout t "La persona lleva 12 horas sin ir al baño." crlf)
+     (retract ?g)
+     (retract ?h)
+   )
+
+)
+
+(defrule error_al_detectar_movimiento
+
+   ?h <- (modulo noirbano)
+   (valor_registrado ?tiempo movimiento bano on)
+   (HoraActualizada ?t)
+   ?g <- (IncioNoIrBano ?inicio)
+   =>
+   (printout t "Falsa alarma se fue al baño" crlf)
+   (retract ?g)
+   (retract ?h)
+
+
+)
+
+
+
+;-------------------------------------------------------------------------------
 
 (defrule informe
   (informe ?habitacion)
@@ -403,13 +491,15 @@
 (deffacts pruebas_valores
 
 
-;    (valor_registrado 5 movimiento salon OFF)
-;    (valor_registrado 10 movimiento salon ON)
-;    (valor_registrado 12 luminosidad salon 500)
+     ;(valor_registrado 5 movimiento salon off)
+     ;(valor_registrado 50 movimiento salon on)
+     ;(valor_registrado 12 luminosidad salon 500)
      ;(valor_registrado luminosidad salon 525)
-     (valor magnetico salon off)
+     ;(valor magnetico salon off)
+     ;(valor movimiento bano off)
+     ;(valor movimiento bano on)
+     ;(valor magnetico salon off)
      ;(valor movimiento salon on)
-
 
 
 
