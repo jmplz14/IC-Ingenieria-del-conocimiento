@@ -200,23 +200,26 @@
 
 )
 
+
 ;---------------------Modulo baño muchas veces----------------------------------
+;Esta funcon cuenta el nuemro de templates que existen. Se le pasa por parametro
 (deffunction count-facts-2 (?template)
 (length (find-all-facts ((?fct ?template)) TRUE)))
 
 (defrule anadir_ir_bano
 
   ;(ultimo_registro movimiento ?habitacion ?tiempo)
-  (valor_registrado ?tiempo movimiento bano off)
+  ;(valor_registrado ?tiempo movimiento bano off)
+  (ultima_activacion movimiento bano ?tiempo)
   =>
   ;(printout t crlf "primer on completo")
   (assert (fuebano ?tiempo))
   (assert (contarbano))
 )
-(defrule borrar_ultima_activacion
+(defrule borrar_veces_bano
   (fuebano ?tiempo)
   ?Borrar <- (fuebano ?tiempo2)
-  (test (< 30 (- ?tiempo ?tiempo2)))
+  (test (< 10800 (- ?tiempo ?tiempo2)))
   =>
   ;(printout t "Borrando" crlf)
   (retract ?Borrar)
@@ -226,36 +229,15 @@
   (declare (salience -10))
   ?f <- (contarbano)
   =>
-  (if (< 5 (count-facts-2 fuebano) )
+  (if (< 4 (count-facts-2 fuebano) )
   then
-    (printout t "La persona fue mucho al baño" crlf)
+    (printout t ?*hora* ":" ?*minutos* ":" ?*segundos* ": La persona fue " (count-facts-2 fuebano) " veces al baño" crlf)
   )
   (retract ?f)
 )
 
 
-;(defrule vista_bano
-  ;(ultimo_registro magnetico ?puertaExterior ?tiempo)
-  ;(ultima_desactivacion movimiento bano ?tiempo)
-  ;(valor_registrado ? ? ?a ?)
-  =>
-  ;(printout t "aaaa" crlf)
-  ;(assert (HoraInicioAbandonoCasa ?*transcurrido*))
-  ;(assert (PasadaActualAbandonoCasa))
-  ;(assert (modulo salircasa))
 
-;)
-
-;(defrule error_al_detectar_movimiento
-
-;   (fuebano ?tiempo)
-;   (fuebano ?tiempo)
-;   =>
-;   (printout t "Contando" crlf)
-
-
-
-;)
 
 
 
@@ -268,11 +250,10 @@
 ;---------------------Modulo detectar si sale de casa---------------------------
 (defrule activar_modulo_abandono_casa
 
-  (ultimo_registro magnetico ?puertaExterior ?tiempo)
+  ;(ultimo_registro magnetico ?puertaExterior ?tiempo)
   (valor_registrado ?tiempo magnetico ?puertaExterior off)
   =>
   (assert (HoraInicioAbandonoCasa ?*transcurrido*))
-  ;(assert (PasadaActualAbandonoCasa))
   (assert (modulo salircasa))
 
 )
@@ -285,29 +266,30 @@
 
    =>
 
-   (if (< 15 (- ?*transcurrido* ?inicio))
+   (if (< 60 (- ?*transcurrido* ?inicio))
    then
 
-     (printout t "La persona salio de casa." crlf)
+     (printout t ?*hora* ":" ?*minutos* ":" ?*segundos* ": La persona salio de casa." crlf)
      (retract ?g)
      (retract ?h)
 
    )
 
-   ;(assert (PasadaActualAbandonoCasa))
 )
 
 (defrule error_al_detectar_abandono
-
    ?h <- (modulo salircasa)
-   (valor_registrado ?tiempo movimiento ?habitacion on)
+   (ultima_activacion movimiento salontv ?tiempo)
+
    ?g <- (HoraInicioAbandonoCasa ?inicio)
    =>
-   ;(printout t "Falsa alarma salida" crlf)
-   (retract ?g)
-   ;(retract ?f)
-   (retract ?h)
-
+   (if (< ?inicio ?tiempo)
+   then
+     ;(printout t "Falsa alarma salida" crlf)
+     (retract ?g)
+     ;(retract ?f)
+     (retract ?h)
+   )
 
 )
 ;-------------------------------------------------------------------------------
@@ -320,18 +302,14 @@
   =>
   (if (and (<= 9 ?*hora*) (>= 21 ?*hora*) )
   then
-
-
     (assert (IncioNoMovimiento ?*transcurrido*))
     ;(assert (PasadaActualNoMovimiento))
     (assert (modulo nomovimiento))
   )
 
-
 )
 
 (defrule bucle_modulo_no_movimiento
-
 
    ;(declare (salience -15))
    ?h <- (modulo nomovimiento)
@@ -339,106 +317,36 @@
    ?g <- (IncioNoMovimiento ?inicio)
 
    =>
-   ;(retract ?f)
-   ;(printout t ?*transcurrido* crlf)
-   (if (< 15 (- ?*transcurrido* ?inicio))
+   (if (< 10800 (- ?*transcurrido* ?inicio))
    then
 
-     (printout t "La persona lleva 3 horas sin moverse." crlf)
+     (printout t ?*hora* ":" ?*minutos* ":" ?*segundos* ": La persona lleva 3 horas sin moverse." crlf)
      ;(printout t ?*transcurrido* crlf)
      (retract ?g)
      (retract ?h)
 
    )
-
-
 )
 
 (defrule error_al_detectar_movimiento
 
    ?h <- (modulo nomovimiento)
-   (valor_registrado ?tiempo movimiento ? on)
-   ;?f <- (PasadaActualNoMovimiento)
+   (ultima_activacion movimiento ?habitacion ?tiempo)
+
    ?g <- (IncioNoMovimiento ?inicio)
    =>
-   ;(printout t "Falsa alarma se movio" crlf)
-   (retract ?g)
-   ;(retract ?f)
-   (retract ?h)
-
-
+   (if (< ?inicio ?tiempo)
+   then
+     ;(printout t "Falsa alarma se movio" crlf)
+     (retract ?g)
+     (retract ?h)
+   )
 )
 
 
 
 ;-------------------------------------------------------------------------------
 
-
-
-;---------------------Modulo despierto de noche---------------------------------
-
-;(defrule minSdeT
-;  (Ejecutar ?)
-;  =>
-;  (bind ?min 4)
-;  (do-for-all-facts ((?T T)) (< ?T:S ?min) (bind ?min ?T:S))
-;  (printout t "Valor minimo: " crlf)
-;  (printout t ?min crlf)
-;  (assert (Min ?min))
-;)
-
-;(defrule activar_modulo_despierto_noche
-;  (valor_registrado ?tiempo movimiento ?habitacion on)
-;  =>
-;  (if (and (>= 8 ?*hora*) (<= 22 ?*hora*) )
-;  then
-;    (printout t "Se esperan los 15 minutos" crlf)
-    ;(assert (IncioDespiertoNoche ?*transcurrido*))
-    ;(assert (PasadaDespiertoNoche))
-    ;(assert (modulo despiertonoche))
-;  )
-
-
-;;)
-
-;(defrule bucle_modulo_despierto_noche
-;   (declare (salience -15))
-;   ?h <- (modulo despiertonoche)
-;   ?f <- (PasadaActualDespiertoNoche)
-;   ?g <- (IncioDespiertoNoche ?inicio)
-
-;   =>
-;   (retract ?f)
-
-;   (if (< 10 (- ?*transcurrido* ?inicio))
-;   then
-
-;     (printout t "Se esperan los 15 minutos" crlf)
-;     (retract ?g)
-;     (retract ?h)
-;     (assert comprobarsiduerme)
-
-;   )
-
-;   (assert (PasadaActualDespiertoNoche))
-;)
-
-;(defrule error_al_detectar_movimiento
-
-;   ?h <- (modulo despiertonoche)
-;   ?i <- (comprobarsiduerme)
-;   ?f <- (PasadaActualDespiertoNoche)
-;   ?g <- (IncioDespiertoNoche ?inicio)
-;   =>
-;   (printout t "Falsa alarma se movio" crlf)
-;   (retract ?g)
-;   (retract ?f)
-;   (retract ?h)
-
-
-;)
-
-;-------------------------------------------------------------------------------
 
 
 ;---------------------Modulo no ir al bano 12 horas-----------------------------
@@ -458,10 +366,10 @@
 
    =>
 
-   (if (< 10 (- ?*transcurrido* ?inicio))
+   (if (< 43200 (- ?*transcurrido* ?inicio))
    then
 
-     (printout t "La persona lleva 12 horas sin ir al baño." crlf)
+     (printout t ?*hora* ":" ?*minutos* ":" ?*segundos* ": La persona lleva 12 horas sin ir al baño." crlf)
      (retract ?g)
      (retract ?h)
    )
@@ -471,13 +379,15 @@
 (defrule error_fue_al_bano_antes
 
    ?h <- (modulo noirbano)
-   (valor_registrado ?tiempo movimiento bano on)
+   (ultima_activacion movimiento bano ?tiempo)
    (HoraActualizada ?t)
    ?g <- (IncioNoIrBano ?inicio)
    =>
-   ;(printout t "Falsa alarma se fue al baño" crlf)
-   (retract ?g)
-   (retract ?h)
+   (if (< ?inicio ?tiempo)
+   then
+     (retract ?g)
+     (retract ?h)
+   )
 
 
 )
@@ -488,7 +398,7 @@
 
 ;---------------------Modulo en el baño 20 minutos------------------------------
 (defrule activar_modulo_en_el_bano
-  (valor_registrado ?tiempo movimiento bano on)
+  (ultima_activacion movimiento bano ?tiempo)
   =>
   (assert (IncioNoIrBano ?*transcurrido*))
   (assert (modulo solobano))
@@ -502,10 +412,10 @@
 
    =>
 
-   (if (< 15(- ?*transcurrido* ?inicio))
+   (if (< 1200 (- ?*transcurrido* ?inicio))
    then
 
-     (printout t "La persona lleva 20 minutos en el baño." crlf)
+     (printout t ?*hora* ":" ?*minutos* ":" ?*segundos* ": La persona lleva 20 minutos en el baño." crlf)
      (retract ?g)
      (retract ?h)
    )
@@ -515,14 +425,14 @@
 (defrule error_salio_bano
 
    ?h <- (modulo solobano)
-   (valor_registrado ?tiempo movimiento ?habitacion off)
-   ;(test (neq ?habitacion bano))
-   (HoraActualizada ?t)
+   (ultima_desactivacion movimiento bano ?tiempo)
    ?g <- (IncioNoIrBano ?inicio)
    =>
-   ;(printout t "Falsa alarma se fue al baño" crlf)
-   (retract ?g)
-   (retract ?h)
+   (if (< ?inicio ?tiempo)
+   then
+     (retract ?g)
+     (retract ?h)
+   )
 
 
 )

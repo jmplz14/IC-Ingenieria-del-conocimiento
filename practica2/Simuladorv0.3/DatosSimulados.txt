@@ -1,9 +1,4 @@
-(bombilla salon 460)
-(bombilla cocina 270)
-(bombilla pasillo 230)
-(luminosidad salon 32)
-(luminosidad cocina 19)
-(luminosidad pasillo 12)
+
 
 
 ;;; Persona sola en salon desde las 10 hasta las 11:10, sale a las 11:10 al  pasillo y despues a la cocina donde permanece hasta las 11:30 y vuelve
@@ -15,16 +10,45 @@
 
 
 ; Está en el salón
-;(datosensor 10 0 1 movimiento salon on)
+;(datosensor 7 0 1 movimiento salon on)
 
 ; Enciende la luz del salon
-;(datosensor 10 0 0 pulsador salon on)
+;(datosensor 7 0 0 pulsador salon on)
 
-(datosensor  10 0 20 movimiento bano on)
-(datosensor  10 0 25 movimiento bano off)
+;(valor_registrado ?tiempo magnetico ?puertaExterior off)
+(datosensor  9 0 10 movimiento bano on)
+(datosensor  9 30 15 movimiento bano off)
 
-(datosensor  10 0 30 movimiento bano on)
-(datosensor  10 0 35 movimiento bano off)
 
-(datosensor  10 5 40 movimiento bano on)
-(datosensor  10 5 45 movimiento bano off)
+(datosensor  9 31 10 movimiento bano on)
+(datosensor  9 31 15 movimiento bano off)
+
+(datosensor  9 32 10 movimiento bano on)
+(datosensor  9 32 15 movimiento bano off)
+
+(datosensor  9 33 10 movimiento bano on)
+(datosensor  9 33 15 movimiento bano off)
+
+(datosensor  9 34 10 movimiento bano on)
+(datosensor  9 34 15 movimiento bano off)
+
+(datosensor  12 38 10 magnetico puerta off)
+(datosensor  12 38 15 magnetico puerta on)
+
+(datosensor  12 38 10 magnetico puerta off)
+(datosensor  12 38 15 magnetico puerta on)
+
+(datosensor  12 38 20 movimiento salon on)
+(datosensor  12 38 25 movimiento salon off)
+
+(datosensor  14 38 20 movimiento salon on)
+(datosensor  14 38 25 movimiento salon off)
+
+(datosensor  16 38 20 movimiento salon on)
+(datosensor  16 38 25 movimiento salon off)
+
+(datosensor  18 38 20 movimiento salon on)
+(datosensor  18 38 25 movimiento salon off)
+
+(datosensor  19 38 20 movimiento salon on)
+(datosensor  19 38 25 movimiento salon off)
